@@ -519,7 +519,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Callback received when a permissions request has been completed.
+     * Mètode que es crida una vegada l'usuari elegeix una opció de les quals es mostra al demanar-li els permisos.
+     * En aquest mètode es tenen en compte en el cas que l'usuari hagi triat que accepta els permisos que l'aplicació necessita pel funcionament,
+     * en aquest cas el que farà es crida el mètode startLocationUpdates() per començar en l'execució del funcionament de l'API.
+     * Una altra opció seria si l'aplicació és interrompuda, per tant no es faria res.
+     * I per últim si l'usuari ha decidit cancel·lar els permisos que se li demana,
+     * se li mostrarà un snackbar informant l'usuari que és necessari que accepti els permisos per tal que l'aplicació funcioni correctament.
+     * Si l'usuari prem en boto que se li mostrarà a la snackbar se li tornarà a obrir la pantalla on se li tornarà a demanar els permisos.
      */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
