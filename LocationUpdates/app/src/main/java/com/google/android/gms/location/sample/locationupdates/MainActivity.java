@@ -17,10 +17,12 @@
 package com.google.android.gms.location.sample.locationupdates;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.content.pm.PermissionInfo;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
@@ -32,6 +34,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -53,6 +56,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.security.Permission;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -156,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
      * Time when the location was updated represented as a String.
      */
     private String mLastUpdateTime;
+
+    private Boolean dontAskAgain = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -278,6 +284,7 @@ public class MainActivity extends AppCompatActivity {
         mLocationSettingsRequest = builder.build();
     }
 
+    @SuppressLint("MissingSuperCall")
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
@@ -532,42 +539,55 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         Log.i(TAG, "onRequestPermissionResult");
         if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE) {
-            if (grantResults.length <= 0) {
-                // If user interaction was interrupted, the permission request is cancelled and you
-                // receive empty arrays.
-                Log.i(TAG, "User interaction was cancelled.");
-            } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (mRequestingLocationUpdates) {
-                    Log.i(TAG, "Permission granted, updates requested, starting location updates");
-                    startLocationUpdates();
+            for (int i = 0, len = permissions.length; i < len; i++) {
+                String permission = permissions[i];
+                if (grantResults.length <= 0) {
+                    // If user interaction was interrupted, the permission request is cancelled and you
+                    // receive empty arrays.
+                    Log.i(TAG, "User interaction was cancelled.");
+                } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (mRequestingLocationUpdates) {
+                        Log.i(TAG, "Permission granted, updates requested, starting location updates");
+                        startLocationUpdates();
+                    }
+                } else {
+                    // Permission denied.
+
+                    // Notify the user via a SnackBar that they have rejected a core permission for the
+                    // app, which makes the Activity useless. In a real app, core permissions would
+                    // typically be best requested during a welcome-screen flow.
+
+                    // Additionally, it is important to remember that a permission might have been
+                    // rejected without asking the user for permission (device policy or "Never ask
+                    // again" prompts). Therefore, a user interface affordance is typically implemented
+                    // when permissions are denied. Otherwise, your app could appear unresponsive to
+                    // touches or interactions which have required permissions.
+                    boolean showRationale = shouldShowRequestPermissionRationale(permission);
+                    if (showRationale) {
+                        showSnackbar(R.string.permission_denied_explanation,
+                                R.string.settings, new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View view) {
+                                        // Build intent that displays the App settings screen.
+                                        Intent intent = new Intent();
+                                        intent.setAction(
+                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                        Uri uri = Uri.fromParts("package",
+                                                BuildConfig.APPLICATION_ID, null);
+                                        intent.setData(uri);
+                                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                        startActivity(intent);
+                                    }
+                                });
+                    } else {
+                        if(!dontAskAgain) {
+                            Toast toast = Toast.makeText(getApplicationContext(), "Needed accept all the permission to use this application", Toast.LENGTH_LONG);
+                            toast.setGravity(Gravity.CENTER, 0, 0);
+                            toast.show();
+                            dontAskAgain = true;
+                        }
+                    }
                 }
-            } else {
-                // Permission denied.
-
-                // Notify the user via a SnackBar that they have rejected a core permission for the
-                // app, which makes the Activity useless. In a real app, core permissions would
-                // typically be best requested during a welcome-screen flow.
-
-                // Additionally, it is important to remember that a permission might have been
-                // rejected without asking the user for permission (device policy or "Never ask
-                // again" prompts). Therefore, a user interface affordance is typically implemented
-                // when permissions are denied. Otherwise, your app could appear unresponsive to
-                // touches or interactions which have required permissions.
-                showSnackbar(R.string.permission_denied_explanation,
-                        R.string.settings, new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                // Build intent that displays the App settings screen.
-                                Intent intent = new Intent();
-                                intent.setAction(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                Uri uri = Uri.fromParts("package",
-                                        BuildConfig.APPLICATION_ID, null);
-                                intent.setData(uri);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
-                            }
-                        });
             }
         }
     }
